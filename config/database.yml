@@ -18,3 +18,5 @@ test:
 production:
   <<: *default
   url: "<%= ENV['DATABASE_URL'] %>"
+  prepared_statements: false
+  advisory_locks: false
