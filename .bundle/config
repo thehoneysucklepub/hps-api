@@ -1,0 +1,4 @@
+---
+BUNDLE_DEPLOYMENT: "true"
+BUNDLE_BUILD__MYSQL2: "--with-mysql-include=C:/Progra~1/MariaDB/MARIAD~1/include --with-mysql-lib=C:/Progra~1/MariaDB/MARIAD~1/lib"
+BUNDLE_CACHE_ALL: "false"
