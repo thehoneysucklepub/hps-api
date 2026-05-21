@@ -7,7 +7,7 @@ gem "jwt"
 gem "bcrypt", "~> 3.1.7"
 gem "rack-cors"
 gem "kaminari"
-gem "image_processing", "~> 1.2"
+gem "image_processing", "~> 2.0"
 # Use postgresql as the database for Active Record
 gem "pg"
 # Use the Puma web server [https://github.com/puma/puma]
