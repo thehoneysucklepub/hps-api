@@ -1,10 +1,14 @@
 module Api
   module V1
     class BranchesController < ApplicationController
-      before_action :set_branch, only: [:show, :update, :destroy]
+      include PublicUrls
+
+      before_action :set_branch, only: [ :show, :update, :destroy ]
 
       def index
-        branches = Branch.active.order(:name)
+        # ?all=true (admin) also lists inactive venues so they can be re-activated
+        branches = params[:all] == "true" && admin_request? ? Branch.ordered : Branch.active.ordered
+        branches = branches.where(venue_type: params[:venue_type]) if params[:venue_type].present?
         render json: { success: true, branches: branches }, status: :ok
       end
 
@@ -34,13 +38,19 @@ module Api
 
       private
 
+      # Accepts a numeric id or a slug (/branches/osu)
       def set_branch
-        @branch = Branch.find(params[:id])
+        @branch = params[:id].to_s.match?(/\A\d+\z/) ? Branch.find(params[:id]) : Branch.find_by!(slug: params[:id])
       end
 
       def branch_params
         params.permit(:name, :slug, :address, :phone_primary, :phone_secondary,
-                      :established_year, :description, :active)
+                      :established_year, :description, :active,
+                      :image_url, :tagline, :opening_hours, :map_url, :venue_type, :position,
+                      :eyebrow, :story_title, :story, :signatures_title,
+                      stats: Branch::SECTION_FIELDS["stats"],
+                      features: Branch::SECTION_FIELDS["features"],
+                      signatures: Branch::SECTION_FIELDS["signatures"])
       end
     end
   end

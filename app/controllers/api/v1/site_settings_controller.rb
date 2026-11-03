@@ -1,7 +1,16 @@
 module Api
   module V1
     class SiteSettingsController < ApplicationController
-      before_action :require_admin!
+      before_action :require_admin!, except: [ :public_settings ]
+
+      # Groups that are safe to show on the public website.
+      # "features" (maintenance_mode, booking_enabled...) stays private.
+      PUBLIC_GROUPS = %w[general social contact content barx].freeze
+
+      def public_settings
+        settings = SiteSetting.where(group: PUBLIC_GROUPS)
+        render json: { success: true, settings: settings.to_h { |s| [ s.key, s.value ] } }
+      end
 
       def index
         settings = SiteSetting.all.order(:group, :key)

@@ -26,6 +26,7 @@ Rails.application.routes.draw do
           get :upcoming
           get :this_week
           get :featured
+          get :weekly
         end
         member do
           patch :toggle_featured
@@ -40,7 +41,18 @@ Rails.application.routes.draw do
       resources :menu_categories, only: [:index, :show, :create, :update, :destroy] do
         resources :menu_items, only: [:index, :show, :create, :update, :destroy]
       end
-      resources :menu_pdfs, only: [:index, :show, :create, :update, :destroy]
+      resources :menu_pdfs, only: [:index, :show, :create, :update, :destroy] do
+        member do
+          get  :file     # the PDF itself (?download=1 to download)
+          post :fetch    # copy the PDF from its link (e.g. Google Drive) into the database
+          post :upload   # replace the stored PDF (multipart "file")
+        end
+      end
+
+      # ── Stored files (photos, PDFs kept in the database) ──
+      resources :files, only: [:index, :create, :destroy]
+      get "files/:id(/:name)", to: "files#show", as: :stored_file,
+                               constraints: { id: /\d+/, name: %r{[^/]+} }
 
       # ── Media ─────────────────────────────────────────
       resources :media_items, only: [:index, :show, :create, :update, :destroy] do
@@ -60,7 +72,11 @@ Rails.application.routes.draw do
       end
 
       # ── Site Settings ─────────────────────────────────
-      resources :site_settings, only: [:index, :show, :create, :update]
+      resources :site_settings, only: [:index, :show, :create, :update] do
+        collection do
+          get :public, action: :public_settings   # read-only, no login: site name, social links, Bar-X copy
+        end
+      end
 
       # ── Audit Logs ────────────────────────────────────
       resources :audit_logs, only: [:index]

@@ -13,7 +13,10 @@ module ExceptionHandler
     end
 
     rescue_from ExceptionHandler::InvalidToken do |e|
-      json_error(e.message.presence || "Invalid token", :unauthorized)
+      # Raised without a message, Ruby uses the class name: show something readable instead
+      message = e.message.presence
+      message = "Please log in" if message.nil? || message == e.class.name
+      json_error(message, :unauthorized)
     end
 
     rescue_from ExceptionHandler::ExpiredToken do |e|
@@ -21,7 +24,8 @@ module ExceptionHandler
     end
 
     rescue_from ExceptionHandler::UnauthorizedError do |e|
-      json_error(e.message.presence || "Forbidden", :forbidden)
+      message = e.message == e.class.name ? nil : e.message.presence
+      json_error(message || "You do not have permission to do this", :forbidden)
     end
 
     rescue_from ExceptionHandler::NotFoundError do |e|
