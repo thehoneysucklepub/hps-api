@@ -1,3 +1,19 @@
-.env
+# Secrets
+/.env
+/.env.*
+!/.env.example
+/config/master.key
+
+# Bundler
+/.bundle/
 /vendor/bundle
-/vendor/cache".bundle" 
+/vendor/cache
+/vendor.zip
+
+# Logs, temp files, uploads
+/log/*
+!/log/.keep
+/tmp/*
+!/tmp/.keep
+/storage/*
+!/storage/.keep

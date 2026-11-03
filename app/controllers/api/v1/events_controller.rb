@@ -1,7 +1,7 @@
 module Api
   module V1
     class EventsController < ApplicationController
-      before_action :set_event, only: [:show, :update, :destroy, :toggle_featured, :update_status]
+      before_action :set_event, only: [ :show, :update, :destroy, :toggle_featured, :update_status ]
 
       def index
         events = Event.includes(:branch).order(date_start: :desc)
@@ -40,8 +40,18 @@ module Api
         render json: { success: true, events: events.map { |e| event_json(e) } }
       end
 
+      # Weekly line-ups (recurring), optionally for one branch: /events/weekly?branch_id=3
+      def weekly
+        events = Event.weekly.includes(:branch)
+        events = events.where(branch_id: params[:branch_id]) if params[:branch_id].present?
+        # Order Monday → Sunday; times after midnight (before 06:00) belong to the end of the night
+        night = ->(t) { t.to_s.empty? ? "9" : (t.to_s < "06:00" ? "1#{t}" : "0#{t}") }
+        events = events.sort_by { |e| [ e.day_numbers.map { |d| (d + 6) % 7 }.min || 7, night.call(e.time_local), -e.priority.to_i ] }
+        render json: { success: true, events: events.map { |e| event_json(e) } }
+      end
+
       def featured
-        events = Event.featured.includes(:branch)
+        events = Event.featured.one_off.includes(:branch)
         render json: { success: true, events: events.map { |e| event_json(e) } }
       end
 
@@ -56,7 +66,7 @@ module Api
               title:      "New Event: #{event.title}",
               body:       "#{event.title} on #{event.date_start}. Book your spot now!",
               notif_type: "event",
-              link:       "/live-sports"
+              link:       "/whats-on"
             )
           end
         end
@@ -112,17 +122,19 @@ module Api
         params.permit(
           :title, :event_type, :league_or_category, :badge, :description,
           :branch_id, :date_start, :date_end, :time_local, :venue_or_city,
-          :image_url, :status, :priority, :source, :featured, :is_global
+          :image_url, :status, :priority, :source, :featured, :is_global,
+          :recurrence, :days_of_week, :time_end, :area
         )
       end
 
       def apply_filters(events)
         events = events.where(event_type: params[:type])              if params[:type].present?
+        events = events.where(recurrence: params[:recurrence])        if params[:recurrence].present?
         events = events.where(status: params[:status])                if params[:status].present?
         events = events.where(is_global: true)                        if params[:global] == "true"
         events = events.where("date_start >= ?", params[:from])       if params[:from].present?
         events = events.where("date_start <= ?", params[:to])         if params[:to].present?
-        events = events.where("title LIKE ?", "%#{params[:search]}%") if params[:search].present?
+        events = events.where("title ILIKE ?", "%#{Event.sanitize_sql_like(params[:search])}%") if params[:search].present?
         if params[:branch_id].present?
           events = events.where(
             "branch_id = ? OR is_global = ?",
@@ -142,6 +154,7 @@ module Api
           description:        event.description,
           branch_id:          event.branch_id,
           branch_name:        event.branch&.name,
+          branch_slug:        event.branch&.slug,
           date_start:         event.date_start,
           date_end:           event.date_end,
           time_local:         event.time_local,
@@ -151,6 +164,10 @@ module Api
           priority:           event.priority,
           featured:           event.featured,
           is_global:          event.is_global,
+          recurrence:         event.recurrence,
+          days_of_week:       event.day_numbers,
+          time_end:           event.time_end,
+          area:               event.area,
           bookings_count:     event.event_bookings.count,
           created_at:         event.created_at
         }

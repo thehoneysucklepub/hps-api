@@ -8,6 +8,14 @@ fi
 # If running the rails server then create or migrate existing database
 if [ "${1}" == "./bin/rails" ] && [ "${2}" == "server" ]; then
   ./bin/rails db:prepare
+
+  # One-time content load (line-ups, Borracha/Bar-X, menus) without a shell:
+  # set HPS_LOAD_CONTENT=true on Render, deploy once, then remove the variable.
+  # Safe if left on by mistake (it never duplicates or overwrites), but staff
+  # deletions of seeded line-ups would come back, so switch it off afterwards.
+  if [ "${HPS_LOAD_CONTENT}" == "true" ]; then
+    ./bin/rails hps:content || echo "hps:content failed; the server starts anyway"
+  fi
 fi
 
 exec "${@}"
