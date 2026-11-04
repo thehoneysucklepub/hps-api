@@ -1,8 +1,16 @@
+# PostgreSQL. Live: Supabase (DATABASE_URL on Render).
+#
+# prepared_statements / advisory_locks are off everywhere: Supabase's connection
+# pooler hands each query a different connection, and Rails' cached ("prepared")
+# queries then fail with: prepared statement "a1" already exists / does not exist.
 default: &default
   adapter: postgresql
   encoding: unicode
   pool: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 } %>
+  prepared_statements: false
+  advisory_locks: false
 
+# Your own computer (set these in .env)
 local: &local
   <<: *default
   username: <%= ENV.fetch("DB_USERNAME") { "postgres" } %>
@@ -23,5 +31,3 @@ production:
   # Unquoted on purpose: when DATABASE_URL is not set (e.g. on a laptop) this is
   # empty instead of "", which would stop every database command, even in development.
   url: <%= ENV["DATABASE_URL"] %>
-  prepared_statements: false
-  advisory_locks: false
