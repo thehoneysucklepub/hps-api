@@ -9,7 +9,7 @@ module Api
         events = paginate(events)
         render json: {
           success: true,
-          events:  events.map { |e| event_json(e) },
+          events:  with_booking_counts(events).map { |e| event_json(e) },
           meta:    pagination_meta(events)
         }
       end
@@ -20,7 +20,7 @@ module Api
 
       def live
         events = Event.live_now.includes(:branch)
-        render json: { success: true, events: events.map { |e| event_json(e) } }
+        render json: { success: true, events: with_booking_counts(events).map { |e| event_json(e) } }
       end
 
       def upcoming
@@ -29,7 +29,7 @@ module Api
           events = events.where("branch_id = ? OR is_global = ?", params[:branch_id], true)
         end
         events = events.limit(30)
-        render json: { success: true, events: events.map { |e| event_json(e) } }
+        render json: { success: true, events: with_booking_counts(events).map { |e| event_json(e) } }
       end
 
       def this_week
@@ -37,7 +37,7 @@ module Api
         if params[:branch_id].present?
           events = events.where("branch_id = ? OR is_global = ?", params[:branch_id], true)
         end
-        render json: { success: true, events: events.map { |e| event_json(e) } }
+        render json: { success: true, events: with_booking_counts(events).map { |e| event_json(e) } }
       end
 
       # Weekly line-ups (recurring), optionally for one branch: /events/weekly?branch_id=3
@@ -47,12 +47,12 @@ module Api
         # Order Monday → Sunday; times after midnight (before 06:00) belong to the end of the night
         night = ->(t) { t.to_s.empty? ? "9" : (t.to_s < "06:00" ? "1#{t}" : "0#{t}") }
         events = events.sort_by { |e| [ e.day_numbers.map { |d| (d + 6) % 7 }.min || 7, night.call(e.time_local), -e.priority.to_i ] }
-        render json: { success: true, events: events.map { |e| event_json(e) } }
+        render json: { success: true, events: with_booking_counts(events).map { |e| event_json(e) } }
       end
 
       def featured
         events = Event.featured.one_off.includes(:branch)
-        render json: { success: true, events: events.map { |e| event_json(e) } }
+        render json: { success: true, events: with_booking_counts(events).map { |e| event_json(e) } }
       end
 
       def create
@@ -144,6 +144,17 @@ module Api
         events
       end
 
+      # One query for all booking counts in a list (was one query per event)
+      def with_booking_counts(events)
+        list = events.to_a
+        @booking_counts = EventBooking.where(event_id: list.map(&:id)).group(:event_id).count
+        list
+      end
+
+      def booking_count(event)
+        @booking_counts ? @booking_counts.fetch(event.id, 0) : event.event_bookings.count
+      end
+
       def event_json(event)
         {
           id:                 event.id,
@@ -168,7 +179,7 @@ module Api
           days_of_week:       event.day_numbers,
           time_end:           event.time_end,
           area:               event.area,
-          bookings_count:     event.event_bookings.count,
+          bookings_count:     booking_count(event),
           created_at:         event.created_at
         }
       end

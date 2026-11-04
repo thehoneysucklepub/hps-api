@@ -7,7 +7,10 @@ module PublicUrls
   # Public address of the API ending in /api/v1.
   # Set PUBLIC_API_URL (e.g. https://api.honeysucklepub.com) if links come out wrong behind a proxy.
   def api_base_url
-    root = ENV["PUBLIC_API_URL"].presence || request.base_url
+    root = ENV["PUBLIC_API_URL"].presence
+    # Live site: always https, even if the proxy in front of Rails says http,
+    # otherwise browsers block the photos on the https website.
+    root ||= Rails.env.production? ? "https://#{request.host}" : request.base_url
     "#{root.chomp('/')}/api/v1"
   end
 

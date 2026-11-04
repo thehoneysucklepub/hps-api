@@ -5,7 +5,10 @@ module Api
 
       # Groups that are safe to show on the public website.
       # "features" (maintenance_mode, booking_enabled...) stays private.
-      PUBLIC_GROUPS = %w[general social contact content barx].freeze
+      PUBLIC_GROUPS = %w[general social contact content barx images].freeze
+
+      # Page photos managed in Admin → Media → Website photos (group "images")
+      IMAGE_KEYS = %w[image_home_hero image_branches image_whats_on image_menu].freeze
 
       def public_settings
         settings = SiteSetting.where(group: PUBLIC_GROUPS)
@@ -29,8 +32,12 @@ module Api
       end
 
       def update
-        setting = SiteSetting.find_by!(key: params[:id])
-        setting.update!(setting_params)
+        setting = SiteSetting.find_by(key: params[:id])
+        # Website photo slots are created on first save
+        setting ||= SiteSetting.new(key: params[:id], group: "images") if IMAGE_KEYS.include?(params[:id])
+        raise ActiveRecord::RecordNotFound unless setting
+
+        setting.update!(setting.group == "images" ? { value: params[:value].to_s.strip } : setting_params)
         audit(action: "update_setting", resource: "SiteSetting", details: params[:id])
         render json: { success: true, setting: setting }
       end
